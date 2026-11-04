@@ -1,0 +1,79 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pace"
+version = "1.0.0"
+description = "PACE: a progress-conditioned vision-language-action policy (training, evaluation and progress tools)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "PACE Authors" }]
+keywords = ["vision-language-action", "robot learning", "task progress", "robotic manipulation"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+# PyTorch: install the build matching your CUDA version first (see requirements.txt).
+dependencies = [
+    "torch>=2.6",
+    "torchvision>=0.21",
+    "transformers==4.57.0",
+    "diffusers==0.37.0",
+    "accelerate==1.5.2",
+    "deepspeed==0.16.9",
+    "huggingface_hub>=0.34",
+    "omegaconf>=2.3",
+    "pyyaml>=6.0",
+    "numpy>=1.26,<2",
+    "pandas>=2.0",
+    "pyarrow>=14",
+    "pydantic>=2.10,<3",
+    "numpydantic>=1.6",
+    "av>=12",
+    "opencv-python-headless>=4.8",
+    "pillow>=10",
+    "tqdm",
+    "rich",
+    "websockets>=13",
+    "msgpack>=1.0",
+]
+
+[project.optional-dependencies]
+flash = ["flash-attn==2.7.4.post1"]
+wandb = ["wandb"]
+viz = ["scipy", "matplotlib"]
+libero-client = ["tyro", "imageio[ffmpeg]"]
+simpler-client = ["transforms3d"]
+dev = ["pytest", "ruff"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pace*", "deployment*"]
+
+[tool.setuptools.package-data]
+"pace" = ["config/training/*.yaml", "config/deepspeed/*.yaml", "config/deepspeed/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.black]
+line-length = 121
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 121
+target-version = "py310"
+extend-exclude = ["third_party"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]

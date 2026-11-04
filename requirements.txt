@@ -1,0 +1,45 @@
+# PACE model / policy-server / training environment (Python >= 3.10; tested with Python 3.10).
+#
+# PyTorch is not pinned here: install it first for your CUDA version (minimum torch 2.6; the released models were
+# trained and evaluated with torch 2.6.0 + CUDA 12.6 and torchvision 0.21.0, whose torchvision.io.VideoReader is used
+# by the training data loader), e.g.
+#   pip install torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cu126
+torch>=2.6
+torchvision>=0.21
+
+# Pinned to the versions used for the released checkpoints (numerics of the VLM / action head depend on them).
+transformers==4.57.0
+diffusers==0.37.0
+accelerate==1.5.2
+deepspeed==0.16.9
+
+huggingface_hub>=0.34
+omegaconf>=2.3
+pyyaml>=6.0
+numpy>=1.26,<2
+pandas>=2.0
+pyarrow>=14
+pydantic>=2.10,<3
+numpydantic>=1.6
+av>=12
+opencv-python-headless>=4.8
+pillow>=10
+tqdm
+rich
+websockets>=13
+msgpack>=1.0
+
+# Optional:
+#   flash-attn==2.7.4.post1   (pip install flash-attn==2.7.4.post1 --no-build-isolation). The configs use
+#                             attn_implementation=flash_attention_2; without flash-attn set PACE_ATTN_IMPLEMENTATION=sdpa
+#                             (runs, but is not the kernel the released numbers were produced with).
+#   wandb                     (only if `wandb` is added to `trackers` in the training config)
+#
+# Evaluation clients and tools. The LIBERO / SimplerEnv clients usually run in the benchmark's own environment:
+# install the lines below there as well (plus websockets, msgpack, omegaconf, pyyaml, huggingface_hub, numpy and
+# opencv-python-headless from above) and put this repository on PYTHONPATH (the model stack is not needed there).
+tyro>=0.8                 # examples/LIBERO/eval_libero.py (plus LIBERO itself)
+imageio[ffmpeg]>=2.30     # LIBERO rollout videos
+transforms3d>=0.4         # examples/SimplerEnv (plus a standard SimplerEnv-ManiSkill3 install: mani_skill, simpler_env)
+scipy>=1.10               # tools/progress_viz
+matplotlib>=3.7           # tools/progress_viz

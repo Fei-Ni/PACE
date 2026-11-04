@@ -1,0 +1,16 @@
+# accelerate launch config: DeepSpeed ZeRO stage 2, bf16, no offload, single node.
+# The number of processes is set by the launcher (--num_processes, 4 GPUs for the released models).
+compute_environment: LOCAL_MACHINE
+debug: false
+deepspeed_config:
+  deepspeed_config_file: pace/config/deepspeed/ds_config.json  # relative to the repository root (launch from there)
+  deepspeed_multinode_launcher: standard
+  zero3_init_flag: false
+distributed_type: DEEPSPEED
+machine_rank: 0
+main_training_function: main
+num_machines: 1
+num_processes: 4
+rdzv_backend: static
+same_network: true
+use_cpu: false

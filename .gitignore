@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Data, checkpoints and outputs (never commit)
+datasets/
+checkpoints/
+runs/
+results/
+wandb/
+*.pt
+*.pth
+*.safetensors
+*.bin
+*.ckpt
+*.parquet
+*.mp4
+!project_page/static/videos/*.mp4
+*.npz
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Maintainer-only extra patterns for tools/release_check.sh
+.release_denylist

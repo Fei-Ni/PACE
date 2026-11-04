@@ -1,0 +1,139 @@
+# Copyright 2025 starVLA community. All rights reserved.
+# Implemented by [Jinhui YE / HKUST University] in [2025], following the openpi websocket policy server
+# (https://github.com/Physical-Intelligence/openpi, Apache-2.0; see THIRD_PARTY_NOTICES.md).
+
+import asyncio
+import logging
+import traceback
+
+import websockets.asyncio.server
+import websockets.frames
+
+from . import msgpack_numpy
+from . import image_tools
+
+class WebsocketPolicyServer:
+    """Serves a policy using the websocket protocol. See websocket_client_policy.py for a client implementation.
+
+    Currently only implements the `load` and `infer` methods.
+    """
+
+    def __init__(
+        self,
+        policy,
+        host: str = "0.0.0.0",
+        port: int = 8000,
+        metadata: dict | None = None,
+    ) -> None:
+        self._policy = policy  #
+        self._host = host
+        self._port = port
+        self._metadata = metadata or {}
+        logging.getLogger("websockets.server").setLevel(logging.INFO)
+
+    def serve_forever(self) -> None:
+        asyncio.run(self.run())
+
+    async def run(self):
+        async with websockets.asyncio.server.serve(
+            self._handler,
+            self._host,
+            self._port,
+            compression=None,
+            max_size=None,
+        ) as server:
+            await server.serve_forever()
+
+    async def _handler(self, websocket: websockets.asyncio.server.ServerConnection):
+        logging.info(f"Connection from {websocket.remote_address} opened")
+        packer = msgpack_numpy.Packer()
+
+        await websocket.send(packer.pack(self._metadata))
+
+        while True:
+            try:
+                msg = msgpack_numpy.unpackb(await websocket.recv())
+                ret = self._route_message(msg)  # route message
+                await websocket.send(packer.pack(ret))
+            except websockets.ConnectionClosed:
+                logging.info(f"Connection from {websocket.remote_address} closed")
+                break
+            except Exception:
+                await websocket.send(traceback.format_exc())
+                await websocket.close(
+                    code=websockets.frames.CloseCode.INTERNAL_ERROR,
+                    reason="Internal server error. Traceback included in previous frame.",
+                )
+                raise
+
+    # route logic: recognize request from client
+    def _route_message(self, msg: dict) -> dict:
+        """
+        Route rules (fault-tolerant):
+        - Supports messages of form:
+            {"type": "ping|init|infer|reset", "request_id": "...", "payload": {...}}
+          or a flat dict (will be treated as payload).
+        - Always returns a dict containing:
+            {
+              "status": "ok" | "error",
+              "ok": bool,
+              "type": <str>,
+              "request_id": <str>,
+              ... (data | error)
+            }
+        - Does NOT raise inside this function: all exceptions are caught and encoded in response.
+        """
+        req_id = msg.get("request_id", "default")
+        mtype = msg.get("type", "infer")          # default = infer
+        payload = msg.get("payload", msg)         # when no explicit payload, treat top-level as payload
+
+        # ping
+        if mtype == "ping":
+            return {"status": "ok", "ok": True, "type": "ping", "request_id": req_id}
+
+        # infer
+        elif mtype == "infer":
+            # Basic payload sanity
+            if not isinstance(payload, dict):
+                return {
+                    "status": "error",
+                    "ok": False,
+                    "type": "inference_result",
+                    "request_id": req_id,
+                    "error": {"message": "Payload must be a dict", "payload_type": str(type(payload))}
+                }
+            try:
+                payload["batch_images"] = image_tools.to_pil_preserve(payload["batch_images"])
+                output_dict = self._policy.predict_action(**payload)
+            except Exception as e:
+                logging.exception("Policy inference error (request_id=%s)", req_id)
+                logging.exception(e)
+
+                return {
+                    "status": "error",
+                    "ok": False,
+                    "type": "inference_result",
+                    "request_id": req_id,
+                    "error": {
+                        "message": str(e),
+                        # "traceback": traceback.format_exc(),
+                    },
+                }
+            data = output_dict
+            return {
+                "status": "ok",
+                "ok": True,
+                "type": "inference_result",
+                "request_id": req_id,
+                "data": data,
+            }
+
+        # unknown request type
+        else:
+            return {
+                "status": "error",
+                "ok": False,
+                "type": "unknown",
+                "request_id": req_id,
+                "error": {"message": f"Unsupported message type '{mtype}'"},
+            }
